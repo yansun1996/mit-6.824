@@ -1,7 +1,11 @@
 package mapreduce
 
 import (
+	"encoding/json"
 	"hash/fnv"
+	"io/ioutil"
+	"log"
+	"os"
 )
 
 func doMap(
@@ -53,6 +57,47 @@ func doMap(
 	//
 	// Your code here (Part I).
 	//
+
+	// read input file by ioutil
+	content, err := ioutil.ReadFile(inFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// get k-v pairs by mapF function
+	kvs := mapF(inFile, string(content))
+
+	// distribute tasks by ihash value
+	tasks := make([][]KeyValue, nReduce)
+	for _, kvPair := range kvs {
+		taskIndex := ihash(kvPair.Key) % nReduce
+		tasks[taskIndex] = append(tasks[taskIndex], kvPair)
+	}
+
+	// generate intermediate files
+	for idx, task := range tasks {
+		// create file
+		fileName := reduceName(jobName, mapTask, idx)
+		file, err := os.Create(fileName)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// define encode process
+		jsonEncoding, err := json.Marshal(task)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := file.Write(jsonEncoding); err != nil {
+			log.Fatal(err)
+		}
+
+		// close file
+		if err := file.Close(); err != nil {
+			log.Fatal(err)
+		}
+
+	}
 }
 
 func ihash(s string) int {

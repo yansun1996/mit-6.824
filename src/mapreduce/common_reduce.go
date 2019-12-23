@@ -1,5 +1,12 @@
 package mapreduce
 
+import (
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"os"
+)
+
 func doReduce(
 	jobName string, // the name of the whole MapReduce job
 	reduceTask int, // which reduce task this is
@@ -44,4 +51,54 @@ func doReduce(
 	//
 	// Your code here (Part I).
 	//
+
+	// init slices for saving results
+	kvs := make([]KeyValue, 0)
+
+	// read intermediate files
+	for mapTask := 0; mapTask < nMap; mapTask++ {
+		// open file
+		fileName := reduceName(jobName, mapTask, reduceTask)
+		mapOutput, err := ioutil.ReadFile(fileName)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// define decode process
+		currKVPairs := make([]KeyValue, 0)
+		if err = json.Unmarshal(mapOutput, &currKVPairs); err != nil {
+			log.Fatal(err)
+		}
+
+		// collect kv pairs
+		for _, x := range currKVPairs {
+			kvs = append(kvs, x)
+		}
+
+		// build kv map
+		// no need to sort kv pairs
+		kvMap := make(map[string][]string)
+		for _, kv := range kvs {
+			key, value := kv.Key, kv.Value
+			kvMap[key] = append(kvMap[key], value)
+		}
+
+		// make output
+		resFile, err := os.Create(outFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		encoder := json.NewEncoder(resFile)
+		for key, value := range kvMap {
+			if err := encoder.Encode(KeyValue{key, reduceF(key, value)}); err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		// close file
+		if err := resFile.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 }
