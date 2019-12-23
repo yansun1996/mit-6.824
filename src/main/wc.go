@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"mapreduce"
 	"os"
+	"strconv"
+	"strings"
+	"unicode"
 )
 
 //
@@ -15,6 +19,19 @@ import (
 //
 func mapF(filename string, contents string) []mapreduce.KeyValue {
 	// Your code here (Part II).
+	wordCounter := make(map[string]int)
+	divideFunc := func(c rune) bool {
+		return !unicode.IsLetter(c)
+	}
+	words := strings.FieldsFunc(contents, divideFunc)
+	for _, word := range words {
+		wordCounter[word]++
+	}
+	kvPairs := make([]mapreduce.KeyValue, 0)
+	for word, num := range wordCounter {
+		kvPairs = append(kvPairs, mapreduce.KeyValue{Key: word, Value: strconv.Itoa(num)})
+	}
+	return kvPairs
 }
 
 //
@@ -24,6 +41,16 @@ func mapF(filename string, contents string) []mapreduce.KeyValue {
 //
 func reduceF(key string, values []string) string {
 	// Your code here (Part II).
+	// Add count numbers together
+	total := int64(0)
+	for _, x := range values {
+		if num, err := strconv.ParseInt(x, 10, 64); err == nil {
+			total += num
+		} else {
+			log.Fatal(err)
+		}
+	}
+	return strconv.Itoa(int(total))
 }
 
 // Can be run in 3 ways:
