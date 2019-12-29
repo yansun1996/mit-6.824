@@ -46,7 +46,9 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 		}
 		go func(taskArg DoTaskArgs, regChannel chan string) {
 			worker := <-regChannel
-			call(worker, "Worker.DoTask", taskArg, nil)
+			for !call(worker, "Worker.DoTask", taskArg, nil) {
+				worker = <-registerChan
+			}
 			// use go routine to avoid block
 			go func() {
 				regChannel <- worker
