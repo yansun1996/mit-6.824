@@ -32,3 +32,9 @@ jobs:
       working-directory: ./src/raft
       env:
         GOPATH: /home/runner/work/mit-6.824/mit-6.824
+
+    - name: Test2B
+      run: go test -run 2B
+      working-directory: ./src/raft
+      env:
+        GOPATH: /home/runner/work/mit-6.824/mit-6.824
