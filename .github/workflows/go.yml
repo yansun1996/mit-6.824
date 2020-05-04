@@ -1,0 +1,34 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    name: Lab2 Test
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Build
+      run:  go build raft
+      env:
+        GOPATH: /home/runner/work/mit-6.824/mit-6.824
+
+    - name: Test2A
+      run: go test -run 2A
+      working-directory: ./src/raft
+      env:
+        GOPATH: /home/runner/work/mit-6.824/mit-6.824
