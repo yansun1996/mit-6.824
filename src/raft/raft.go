@@ -18,7 +18,9 @@ package raft
 //
 
 import (
+	"bytes"
 	"fmt"
+	"labgob"
 	"labrpc"
 	"math/rand"
 	"sort"
@@ -243,12 +245,25 @@ func (rf *Raft) persist() {
 	// e.Encode(rf.yyy)
 	// data := w.Bytes()
 	// rf.persister.SaveRaftState(data)
+	rf.lock()
+	defer rf.unlock()
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(rf.currTerm)
+	e.Encode(rf.commitIndex)
+	e.Encode(rf.LastestAppliedIndex)
+	e.Encode(rf.logs)
+	e.Encode(rf.latestLogs)
+	data := w.Bytes()
+	rf.persister.SaveRaftState(data)
 }
 
 //
 // restore previously persisted state.
 //
 func (rf *Raft) readPersist(data []byte) {
+	rf.lock()
+	defer rf.unlock()
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
@@ -265,6 +280,24 @@ func (rf *Raft) readPersist(data []byte) {
 	//   rf.xxx = xxx
 	//   rf.yyy = yyy
 	// }
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	var currTerm, commitIndex, LastestAppliedIndex int
+	var logs []Log
+	var latestlogs AppendEntriesRequest
+	if d.Decode(&currTerm) != nil ||
+		d.Decode(&commitIndex) != nil ||
+		d.Decode(&LastestAppliedIndex) != nil ||
+		d.Decode(&logs) != nil ||
+		d.Decode(&latestlogs) != nil {
+		fmt.Println("Error decoding raft state")
+	} else {
+		rf.currTerm = currTerm
+		rf.commitIndex = commitIndex
+		rf.LastestAppliedIndex = LastestAppliedIndex
+		rf.logs = logs
+		rf.latestLogs = latestlogs
+	}
 }
 
 func (rf *Raft) resetElectionTimer() {
