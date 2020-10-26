@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  build:
+  lab2:
     name: Lab2 Test
     runs-on: ubuntu-latest
     steps:
@@ -42,5 +42,35 @@ jobs:
     - name: Test2C
       run: go test -run 2C
       working-directory: ./src/raft
+      env:
+        GOPATH: /home/runner/work/mit-6.824/mit-6.824
+
+  lab3:
+    name: Lab3 Test
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Build raft
+      run:  go build raft
+      env:
+        GOPATH: /home/runner/work/mit-6.824/mit-6.824
+
+    - name: Build kvraft
+      run:  go build kvraft
+      env:
+        GOPATH: /home/runner/work/mit-6.824/mit-6.824
+
+    - name: Test3A
+      run: go test -run 3A -timeout 20m
+      working-directory: ./src/kvraft
       env:
         GOPATH: /home/runner/work/mit-6.824/mit-6.824
