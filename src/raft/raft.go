@@ -294,8 +294,8 @@ func (rf *Raft) readPersist(data []byte) {
 	} else {
 		rf.currTerm = currTerm
 		rf.commitIndex = commitIndex
-		rf.LastestAppliedIndex = LastestAppliedIndex
 		rf.logs = logs
+		rf.LastestAppliedIndex = 0
 		rf.latestLogs = latestlogs
 	}
 }
@@ -406,7 +406,7 @@ func (rf *Raft) isTooOldLogReq(req *AppendEntriesRequest) bool {
 	return false
 }
 
-// RequestAppendEntries request to append log entries
+// sendRequestAppendEntries request to append log entries
 func (rf *Raft) sendRequestAppendEntries(server int, args *AppendEntriesRequest, reply *AppendEntriesResp) bool {
 	resultChan := make(chan (bool))
 	ok := false
@@ -543,6 +543,7 @@ func (rf *Raft) applyLogs() {
 	for ; rf.LastestAppliedIndex < rf.commitIndex && rf.LastestAppliedIndex < latestIndex; rf.LastestAppliedIndex++ {
 		// it's time to apply the logs that are committed but not applied
 		idx := rf.LastestAppliedIndex
+		DPrintf("commitIdx: %v latestIdx: %v lastAppliedIdx: %v msgIdx: %v msgLog: %+v", rf.commitIndex, latestIndex, rf.LastestAppliedIndex, rf.logs[idx].Index, rf.logs[idx].Log)
 		msg := ApplyMsg{
 			CommandValid: true,
 			Command:      rf.logs[idx].Log,
@@ -749,45 +750,6 @@ func (rf *Raft) replicateLogTo(server int) bool {
 		}
 	}
 	return replicateResult
-}
-
-func (rf *Raft) appendLogs() {
-	for i := 0; i < len(rf.peers); i++ {
-		if i != rf.me {
-			go func(idx int) {
-				req := AppendEntriesRequest{
-					Me:           rf.me,
-					Term:         rf.currTerm,
-					LeaderCommit: rf.commitIndex,
-				}
-				resp := AppendEntriesResp{}
-				nextIdx := rf.nextIndex[idx]
-				req.PrevLogTerm, req.PrevLogIndex = rf.getLogInfo(nextIdx, &req.Entries)
-
-				if len(req.Entries) > 0 {
-					//DPrintf("Raft %v replicate log to index %v with PrevLogTerm %v and PrevLogIndex %v", rf.me, idx, req.PrevLogTerm, req.PrevLogIndex)
-				}
-
-				ok := rf.sendRequestAppendEntries(idx, &req, &resp)
-				if ok {
-					if resp.Term > rf.currTerm {
-						// need to update term now
-						rf.currTerm = resp.Term
-						rf.setRole(Follower)
-						return
-					}
-
-					if !resp.Granted {
-						if rf.nextIndex[idx] > 0 {
-							rf.nextIndex[idx]--
-						}
-					} else {
-						rf.nextIndex[idx] += len(req.Entries)
-					}
-				}
-			}(i)
-		}
-	}
 }
 
 // LogReplicationRoutine routine for log replication
